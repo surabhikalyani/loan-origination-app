@@ -1,0 +1,6 @@
+spring.application.name: LoanOriginationSystem
+logging:
+  level:
+    root: INFO
+    com.example.loanorigination.controller: INFO
+    com.example.loanorigination.service: DEBUG
