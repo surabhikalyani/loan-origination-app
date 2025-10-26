@@ -3,6 +3,7 @@ package com.example.loanorigination.controller;
 import com.example.loanorigination.dto.LoanApplicationRequest;
 import com.example.loanorigination.dto.LoanApplicationResponse;
 import com.example.loanorigination.service.LoanDecisionService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
@@ -22,10 +23,11 @@ public class LoanApplicationController {
     }
 
     @PostMapping("/apply")
-    public ResponseEntity<LoanApplicationResponse> apply(@RequestBody LoanApplicationRequest req) {
+    public ResponseEntity<LoanApplicationResponse> apply(@Valid @RequestBody LoanApplicationRequest req) {
 
         log.info("POST /api/loans/apply received for applicant='{}'", req.getName());
-        log.debug("Request payload: name={}, requestedAmount={}", req.getName(), req.getRequestedAmount());
+        log.debug("Request payload: name={}, monthlyIncome={}", req.getName(), req.getRequestedAmount());
+        System.out.println(">>> Incoming request: " + req);
 
         try {
             LoanApplicationResponse response = service.processLoanApplication(req);

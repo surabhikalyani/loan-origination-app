@@ -1,6 +1,7 @@
 package com.example.loanorigination.service;
 
 import com.example.loanorigination.dto.LoanApplicationRequest;
+import static com.example.loanorigination.dto.LoanApplicationRequest.Status;
 import com.example.loanorigination.dto.LoanApplicationResponse;
 import com.example.loanorigination.dto.LoanOffer;
 import com.example.loanorigination.entity.LoanApplication;
@@ -10,9 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.example.loanorigination.util.DataMaskingUtil.maskEmail;
-import static com.example.loanorigination.util.DataMaskingUtil.maskSsn;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -24,13 +22,14 @@ public class LoanDecisionService {
     private static final Logger log = LoggerFactory.getLogger(LoanDecisionService.class);
 
     private final LoanApplicationRepository loanApplicationRepository;
-    private final Random rng = new Random();
+    private final Random rng;
 
     private static final BigDecimal MIN_AMOUNT = BigDecimal.valueOf(10_000);
     private static final BigDecimal MAX_AMOUNT = BigDecimal.valueOf(50_000);
 
-    public LoanDecisionService(LoanApplicationRepository loanApplicationRepository) {
+    public LoanDecisionService(LoanApplicationRepository loanApplicationRepository, Random rng) {
         this.loanApplicationRepository = loanApplicationRepository;
+        this.rng = rng;
     }
 
     @Transactional
@@ -39,7 +38,7 @@ public class LoanDecisionService {
         log.info("Received new loan application: name='{}', requestedAmount={}",
                 req.getName(), req.getRequestedAmount());
         // 1️⃣ Persist basic application data
-        LoanApplication loanApplication = saveApplication(req);
+        LoanApplication loanApplication = mapToEntity(req);
         log.debug("Loan application saved with temporary ID={}", loanApplication.getId());
 
         // 2️⃣ Run business logic to decide on the loan
@@ -72,7 +71,7 @@ public class LoanDecisionService {
     /** ----------------------------------------------
      *  STEP 1 — Save initial borrower application
      *  ---------------------------------------------- */
-    private LoanApplication saveApplication(LoanApplicationRequest req) {
+    private LoanApplication mapToEntity(LoanApplicationRequest req) {
         LoanApplication app = new LoanApplication();
         app.setName(req.getName());
         app.setAddress(req.getAddress());
@@ -80,6 +79,8 @@ public class LoanDecisionService {
         app.setPhone(req.getPhone());
         app.setSsn(req.getSsn());
         app.setRequestedAmount(req.getRequestedAmount());
+        app.setMonthlyIncome(req.getMonthlyIncome());
+        app.setEmploymentStatus(req.getEmploymentStatus());
 
         log.debug("Saving application for '{}'", req.getName());
         return loanApplicationRepository.save(app);
@@ -106,6 +107,13 @@ public class LoanDecisionService {
         } else if (creditLines > 50) {
             decision = "DENIED";
             reason = "Credit lines > 50";
+        } else if (loanApplication.getEmploymentStatus() == Status.UNEMPLOYED) {
+            decision = "DENIED";
+            reason = "No income source";
+        } else if (loanApplication.getMonthlyIncome() == null ||
+                loanApplication.getMonthlyIncome().compareTo(BigDecimal.valueOf(2000)) < 0) {
+            decision = "DENIED";
+            reason = "Insufficient income";
         } else {
             decision = "APPROVED";
             interestRate = creditLines < 10 ? BigDecimal.valueOf(0.10) : BigDecimal.valueOf(0.20);

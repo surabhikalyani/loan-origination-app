@@ -1,0 +1,1 @@
+ALTER TABLE loan_application ADD COLUMN monthly_income NUMERIC(15,2);

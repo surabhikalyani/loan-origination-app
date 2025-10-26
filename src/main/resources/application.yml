@@ -4,3 +4,13 @@ logging:
     root: INFO
     com.example.loanorigination.controller: INFO
     com.example.loanorigination.service: DEBUG
+spring:
+  h2:
+    console:
+      enabled: true
+# --- H2 Database Configuration ---
+  datasource:
+    url: jdbc:h2:mem:loan_db;
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
