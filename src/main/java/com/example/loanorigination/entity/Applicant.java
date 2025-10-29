@@ -2,33 +2,31 @@ package com.example.loanorigination.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "loan_application")
+@Table(name = "applicant")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoanApplication {
+public class Applicant {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "applicant_id", nullable = false)
-    private Applicant applicant;
+    private String name;
+    private String address;
+    private String email;
+    private String phone;
+    private String ssn;
 
-    @Column(name = "requested_amount", nullable = false)
-    private BigDecimal requestedAmount;
-
-    @Column(name = "credit_lines")
-    private Integer creditLines;
-
-    @OneToOne(mappedBy = "application", cascade = CascadeType.ALL)
-    private LoanOffer offer;
+    @OneToMany(mappedBy = "applicant", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<LoanApplication> applications = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -38,3 +36,4 @@ public class LoanApplication {
         this.createdAt = LocalDateTime.now();
     }
 }
+

@@ -1,100 +1,76 @@
 package com.example.loanorigination.service;
 
-import com.example.loanorigination.dto.LoanApplicationRequest;
-import static com.example.loanorigination.dto.LoanApplicationRequest.Status;
-import com.example.loanorigination.dto.LoanApplicationResponse;
-import com.example.loanorigination.dto.LoanOffer;
+import com.example.loanorigination.dto.LoanApplicationRequestDto;
+import com.example.loanorigination.dto.LoanApplicationResponseDto;
+import com.example.loanorigination.dto.LoanOfferDto;
+import com.example.loanorigination.entity.Applicant;
 import com.example.loanorigination.entity.LoanApplication;
+import com.example.loanorigination.entity.LoanOffer;
+import com.example.loanorigination.repository.ApplicantRepository;
 import com.example.loanorigination.repository.LoanApplicationRepository;
+import com.example.loanorigination.repository.LoanOfferRepository;
+import com.example.loanorigination.mapper.LoanMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Random;
 
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class LoanDecisionService {
 
-    private static final Logger log = LoggerFactory.getLogger(LoanDecisionService.class);
-
+    private final ApplicantRepository applicantRepository;
     private final LoanApplicationRepository loanApplicationRepository;
+    private final LoanOfferRepository loanOfferRepository;
+    private final LoanMapper loanMapper;
     private final Random rng;
 
     private static final BigDecimal MIN_AMOUNT = BigDecimal.valueOf(10_000);
     private static final BigDecimal MAX_AMOUNT = BigDecimal.valueOf(50_000);
 
-    public LoanDecisionService(LoanApplicationRepository loanApplicationRepository, Random rng) {
-        this.loanApplicationRepository = loanApplicationRepository;
-        this.rng = rng;
-    }
-
     @Transactional
-    public LoanApplicationResponse processLoanApplication(LoanApplicationRequest req) {
+    public LoanApplicationResponseDto processLoanApplication(LoanApplicationRequestDto req) {
+        log.info("Processing new loan application for {}", req.getName());
 
-        log.info("Received new loan application: name='{}', requestedAmount={}",
-                req.getName(), req.getRequestedAmount());
-        // 1️⃣ Persist basic application data
-        LoanApplication loanApplication = mapToEntity(req);
-        log.debug("Loan application saved with temporary ID={}", loanApplication.getId());
+        //Check if applicant exists before saving to DB
+        Applicant applicant = applicantRepository
+                .findByEmail(req.getEmail())
+                .orElseGet(() -> applicantRepository.save(loanMapper.toApplicant(req)));
 
-        // 2️⃣ Run business logic to decide on the loan
-        evaluateDecision(loanApplication);
-        log.info("Decision evaluated: creditLines={}, decision={}", loanApplication.getCreditLines(), loanApplication.getDecision());
+        //Save application details to DB
+        LoanApplication application = loanMapper.toLoanApplication(req, applicant);
+        loanApplicationRepository.save(application);
+        log.debug("Saved loan application: id={}, applicantId={}", application.getId(), applicant.getId());
 
-        // 3️⃣ Persist final state after decision
-        loanApplicationRepository.save(loanApplication);
-        log.debug("Loan decision persisted: ID={}, decision={}", loanApplication.getId(), loanApplication.getDecision());
+        //Evaluate decision
+        LoanOffer offer = evaluateDecision(application);
+        offer.setApplication(application);
 
-        // 4️⃣ Build API-friendly response
-        LoanOffer offer = loanApplication.getDecision().equals("APPROVED")
-                ? new LoanOffer(loanApplication.getRequestedAmount(), loanApplication.getInterestRate(),
-                loanApplication.getTermMonths(), loanApplication.getMonthlyPayment())
-                : null;
+        //Save offer details
+        loanOfferRepository.save(offer);
 
-        if ("APPROVED".equals(loanApplication.getDecision())) {
-            log.info("Loan approved for '{}': term={} months, rate={}%, monthlyPayment={}",
-                    req.getName(),
-                    loanApplication.getTermMonths(),
-                    loanApplication.getInterestRate().multiply(BigDecimal.valueOf(100)).setScale(1),
-                    loanApplication.getMonthlyPayment());
-        } else {
-            log.warn("Loan denied for '{}': reason='{}'", req.getName(), loanApplication.getReason());
-        }
+        log.info("Decision: applicant={}, decision={}", applicant.getName(), offer.getDecision());
 
-        return new LoanApplicationResponse(loanApplication.getCreditLines(), loanApplication.getDecision(), loanApplication.getReason(), offer);
+        LoanOfferDto offerDto = "APPROVED".equals(offer.getDecision()) ? loanMapper.toLoanOfferDto(offer) : null;
+
+        return LoanApplicationResponseDto.builder()
+                .creditLines(application.getCreditLines())
+                .decision(offer.getDecision())
+                .reason(offer.getReason())
+                .offer(offerDto)
+                .build();
     }
 
-    /** ----------------------------------------------
-     *  STEP 1 — Save initial borrower application
-     *  ---------------------------------------------- */
-    private LoanApplication mapToEntity(LoanApplicationRequest req) {
-        LoanApplication app = new LoanApplication();
-        app.setName(req.getName());
-        app.setAddress(req.getAddress());
-        app.setEmail(req.getEmail());
-        app.setPhone(req.getPhone());
-        app.setSsn(req.getSsn());
-        app.setRequestedAmount(req.getRequestedAmount());
-        app.setMonthlyIncome(req.getMonthlyIncome());
-        app.setEmploymentStatus(req.getEmploymentStatus());
-
-        log.debug("Saving application for '{}'", req.getName());
-        return loanApplicationRepository.save(app);
-    }
-
-    /** ----------------------------------------------
-     *  STEP 2 — Evaluate and update loan decision
-     *  ---------------------------------------------- */
-    private void evaluateDecision(LoanApplication loanApplication) {
+    private LoanOffer evaluateDecision(LoanApplication app) {
         int creditLines = rng.nextInt(101);
-        loanApplication.setCreditLines(creditLines);
-        log.debug("Generated random credit lines={} for '{}'", creditLines, loanApplication.getName());
+        app.setCreditLines(creditLines);
 
-        BigDecimal amount = loanApplication.getRequestedAmount();
+        BigDecimal amount = app.getRequestedAmount();
         String decision;
         String reason = null;
         BigDecimal interestRate = null;
@@ -103,17 +79,10 @@ public class LoanDecisionService {
 
         if (amount.compareTo(MIN_AMOUNT) < 0 || amount.compareTo(MAX_AMOUNT) > 0) {
             decision = "DENIED";
-            reason = "Requested amount outside 10k–50k";
+            reason = "Requested amount outside 10k–50k range";
         } else if (creditLines > 50) {
             decision = "DENIED";
             reason = "Credit lines > 50";
-        } else if (loanApplication.getEmploymentStatus() == Status.UNEMPLOYED) {
-            decision = "DENIED";
-            reason = "No income source";
-        } else if (loanApplication.getMonthlyIncome() == null ||
-                loanApplication.getMonthlyIncome().compareTo(BigDecimal.valueOf(2000)) < 0) {
-            decision = "DENIED";
-            reason = "Insufficient income";
         } else {
             decision = "APPROVED";
             interestRate = creditLines < 10 ? BigDecimal.valueOf(0.10) : BigDecimal.valueOf(0.20);
@@ -121,21 +90,21 @@ public class LoanDecisionService {
             monthlyPayment = amortizedMonthly(amount, interestRate, termMonths);
         }
 
-        log.debug("Decision computed: decision={}, reason={}, rate={}, term={}, monthly={}",
-                decision, reason, interestRate, termMonths, monthlyPayment);
+        log.debug("Computed offer: decision={}, rate={}, term={}", decision, interestRate, termMonths);
 
-        loanApplication.setDecision(decision);
-        loanApplication.setReason(reason);
-        loanApplication.setInterestRate(interestRate);
-        loanApplication.setTermMonths(termMonths);
-        loanApplication.setMonthlyPayment(monthlyPayment);
+        return LoanOffer.builder()
+                .application(app)
+                .decision(decision)
+                .reason(reason)
+                .interestRate(interestRate)
+                .termMonths(termMonths)
+                .monthlyPayment(monthlyPayment)
+                .requestedAmount(app.getRequestedAmount())
+                .build();
     }
 
-    /** ----------------------------------------------
-     *  Helper — Monthly Payment Calculation
-     *  ---------------------------------------------- */
-    private BigDecimal amortizedMonthly(BigDecimal principal, BigDecimal interestRate, int term) {
-        BigDecimal monthlyRate = interestRate.divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP);
+    private BigDecimal amortizedMonthly(BigDecimal principal, BigDecimal rate, int term) {
+        BigDecimal monthlyRate = rate.divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP);
         double r = monthlyRate.doubleValue();
         double p = principal.doubleValue();
         double payment = p * r / (1 - Math.pow(1 + r, -term));

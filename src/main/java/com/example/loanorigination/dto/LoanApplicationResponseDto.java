@@ -5,15 +5,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoanApplicationResponse {
+public class LoanApplicationResponseDto {
     private int creditLines;
     private String decision;
     private String reason;
-    private LoanOffer offer;
+    private LoanOfferDto offer;
 }

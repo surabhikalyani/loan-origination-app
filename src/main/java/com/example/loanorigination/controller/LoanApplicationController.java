@@ -1,46 +1,39 @@
 package com.example.loanorigination.controller;
 
-import com.example.loanorigination.dto.LoanApplicationRequest;
-import com.example.loanorigination.dto.LoanApplicationResponse;
+import com.example.loanorigination.dto.LoanApplicationRequestDto;
+import com.example.loanorigination.dto.LoanApplicationResponseDto;
 import com.example.loanorigination.service.LoanDecisionService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-
+@Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/loan-applications")
-@CrossOrigin(origins = {"http://localhost:5173/", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class LoanApplicationController {
 
-    private static final Logger log = LoggerFactory.getLogger(LoanApplicationController.class);
     private final LoanDecisionService service;
 
-    public LoanApplicationController(LoanDecisionService service) {
-        this.service = service;
+    /**
+     * Handles borrower loan applications.
+     * Validates the request, delegates to business logic, and returns the loan decision.
+     */
+    @PostMapping
+    public ResponseEntity<LoanApplicationResponseDto> apply(
+            @Valid @RequestBody LoanApplicationRequestDto request) {
+
+        log.info("🎯 Received loan application for name='{}', requestedAmount={}",
+                request.getName(), request.getRequestedAmount());
+
+        LoanApplicationResponseDto response = service.processLoanApplication(request);
+
+        log.info("✅ Loan decision for '{}': decision={}, creditLines={}",
+                request.getName(), response.getDecision(), response.getCreditLines());
+
+        return ResponseEntity.ok(response);
     }
-
-    @PostMapping("/apply")
-    public ResponseEntity<LoanApplicationResponse> apply(@Valid @RequestBody LoanApplicationRequest req) {
-
-        log.info("POST /api/loans/apply received for applicant='{}'", req.getName());
-        log.debug("Request payload: name={}, monthlyIncome={}", req.getName(), req.getRequestedAmount());
-        System.out.println(">>> Incoming request: " + req);
-
-        try {
-            LoanApplicationResponse response = service.processLoanApplication(req);
-
-            // 3️⃣ Exit log
-            log.info("Loan decision completed for '{}': decision={}, creditLines={}",
-                    req.getName(), response.getDecision(), response.getCreditLines());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            // 4️⃣ Error log
-            log.error("Error processing loan application for '{}': {}", req.getName(), e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }    }
 }

@@ -1,8 +1,8 @@
 package com.example.loanorigination.controller;
 
-import com.example.loanorigination.dto.LoanApplicationRequest;
-import com.example.loanorigination.dto.LoanApplicationResponse;
-import com.example.loanorigination.dto.LoanOffer;
+import com.example.loanorigination.dto.LoanApplicationRequestDto;
+import com.example.loanorigination.dto.LoanApplicationResponseDto;
+import com.example.loanorigination.dto.LoanOfferDto;
 import com.example.loanorigination.service.LoanDecisionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -33,17 +33,17 @@ class LoanApplicationControllerTest {
 
     @Test
     void shouldReturnApprovedResponse() throws Exception {
-        LoanOffer offer = new LoanOffer(
+        LoanOfferDto offer = new LoanOfferDto(
                 BigDecimal.valueOf(20000),
                 BigDecimal.valueOf(0.12),
                 24,
                 BigDecimal.valueOf(942.15)
         );
 
-        LoanApplicationResponse mockResponse = new LoanApplicationResponse(30, "APPROVED", null, offer);
+        LoanApplicationResponseDto mockResponse = new LoanApplicationResponseDto(30, "APPROVED", null, offer);
         Mockito.when(service.processLoanApplication(any())).thenReturn(mockResponse);
 
-        LoanApplicationRequest request = LoanApplicationRequest.builder()
+        LoanApplicationRequestDto request = LoanApplicationRequestDto.builder()
                 .name("Jane Doe")
                 .address("123 Main St")
                 .email("jane@example.com")
@@ -51,7 +51,7 @@ class LoanApplicationControllerTest {
                 .ssn("1234567890")
                 .requestedAmount(BigDecimal.valueOf(20000))
                 .monthlyIncome(BigDecimal.valueOf(5000))
-                .employmentStatus(LoanApplicationRequest.Status.EMPLOYED)
+                .employmentStatus(LoanApplicationRequestDto.Status.EMPLOYED)
                 .build();
 
         mockMvc.perform(post("/api/loan-applications/apply")
@@ -64,11 +64,11 @@ class LoanApplicationControllerTest {
 
     @Test
     void shouldReturnDeniedResponse() throws Exception {
-        LoanApplicationResponse mockResponse =
-                new LoanApplicationResponse(15, "DENIED", "No income source", null);
+        LoanApplicationResponseDto mockResponse =
+                new LoanApplicationResponseDto(15, "DENIED", "No income source", null);
         Mockito.when(service.processLoanApplication(any())).thenReturn(mockResponse);
 
-        LoanApplicationRequest request = LoanApplicationRequest.builder()
+        LoanApplicationRequestDto request = LoanApplicationRequestDto.builder()
                 .name("John Doe")
                 .address("456 Elm St")
                 .email("john@example.com")
@@ -76,7 +76,7 @@ class LoanApplicationControllerTest {
                 .ssn("9876543210")
                 .requestedAmount(BigDecimal.valueOf(20000))
                 .monthlyIncome(BigDecimal.valueOf(5000))
-                .employmentStatus(LoanApplicationRequest.Status.UNEMPLOYED)
+                .employmentStatus(LoanApplicationRequestDto.Status.UNEMPLOYED)
                 .build();
 
         mockMvc.perform(post("/api/loan-applications/apply")
@@ -89,7 +89,7 @@ class LoanApplicationControllerTest {
 
     @Test
     void shouldReturnInternalServerErrorWhenInvalidInput() throws Exception {
-        LoanApplicationRequest invalid = LoanApplicationRequest.builder()
+        LoanApplicationRequestDto invalid = LoanApplicationRequestDto.builder()
                 .name("") // missing required
                 .email("invalidemail") // no .com, invalid format
                 .requestedAmount(BigDecimal.valueOf(20000))

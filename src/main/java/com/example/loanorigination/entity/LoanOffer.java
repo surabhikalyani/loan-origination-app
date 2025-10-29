@@ -6,29 +6,26 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "loan_application")
+@Table(name = "loan_offer")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class LoanApplication {
+public class LoanOffer {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
-    @JoinColumn(name = "applicant_id", nullable = false)
-    private Applicant applicant;
-
-    @Column(name = "requested_amount", nullable = false)
+    @OneToOne
+    @JoinColumn(name = "application_id", nullable = false)
+    private LoanApplication application;
     private BigDecimal requestedAmount;
-
-    @Column(name = "credit_lines")
-    private Integer creditLines;
-
-    @OneToOne(mappedBy = "application", cascade = CascadeType.ALL)
-    private LoanOffer offer;
+    private String decision;
+    private String reason;
+    private BigDecimal interestRate;
+    private Integer termMonths;
+    private BigDecimal monthlyPayment;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -38,3 +35,4 @@ public class LoanApplication {
         this.createdAt = LocalDateTime.now();
     }
 }
+
