@@ -5,6 +5,8 @@ import com.example.loanorigination.dto.LoanOfferDto;
 import com.example.loanorigination.entity.Applicant;
 import com.example.loanorigination.entity.LoanApplication;
 import com.example.loanorigination.entity.LoanOffer;
+import com.example.loanorigination.util.CryptoUtil;
+import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
@@ -17,8 +19,10 @@ public interface LoanMapper {
             @Mapping(target = "id", ignore = true),
             @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())"),
             @Mapping(target = "applications", ignore = true),
+            @Mapping(target = "ssn", expression = "java(cryptoUtil.encrypt(req.getSsn()))")
     })
-    Applicant toApplicant(LoanApplicationRequestDto req);
+    Applicant toApplicant(@Context CryptoUtil cryptoUtil, LoanApplicationRequestDto req);
+
 
     // 🔹 DTO → LoanApplication
     @Mappings({

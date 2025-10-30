@@ -3,7 +3,6 @@ package com.example.loanorigination.util;
 public class DataMaskingUtil {
 
     private DataMaskingUtil() {
-        // Prevent instantiation — this is a utility class
     }
 
     public static String maskSsn(String ssn) {

@@ -14,3 +14,13 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
+# In production, this would come from environment variables, AWS Secrets Manager, or Vault.
+encryption:
+  aes-key: "1234567890123456"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

@@ -10,6 +10,7 @@ import com.example.loanorigination.repository.ApplicantRepository;
 import com.example.loanorigination.repository.LoanApplicationRepository;
 import com.example.loanorigination.repository.LoanOfferRepository;
 import com.example.loanorigination.mapper.LoanMapper;
+import com.example.loanorigination.util.CryptoUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class LoanDecisionService {
     private final LoanOfferRepository loanOfferRepository;
     private final LoanMapper loanMapper;
     private final Random rng;
+    private final CryptoUtil cryptoUtil;
 
     private static final BigDecimal MIN_AMOUNT = BigDecimal.valueOf(10000);
     private static final BigDecimal MAX_AMOUNT = BigDecimal.valueOf(50000);
@@ -40,7 +42,7 @@ public class LoanDecisionService {
         //Check if applicant exists before saving to DB
         Applicant applicant = applicantRepository
                 .findByEmail(req.getEmail())
-                .orElseGet(() -> applicantRepository.save(loanMapper.toApplicant(req)));
+                .orElseGet(() -> applicantRepository.save(loanMapper.toApplicant(cryptoUtil, req)));
 
         //Save application details to DB
         LoanApplication application = loanMapper.toLoanApplication(req, applicant);
