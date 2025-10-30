@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/loan-applications")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@RequestMapping("/api/loan-applications/apply")
+@CrossOrigin(origins = {"http://localhost:5173/", "http://localhost:3000"})
 public class LoanApplicationController {
 
     private final LoanDecisionService service;

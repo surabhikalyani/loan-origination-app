@@ -4,6 +4,7 @@ import com.example.loanorigination.dto.LoanApplicationRequestDto;
 import com.example.loanorigination.dto.LoanApplicationResponseDto;
 import com.example.loanorigination.dto.LoanOfferDto;
 import com.example.loanorigination.service.LoanDecisionService;
+import com.example.loanorigination.util.LoanApplicationRequestBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -15,7 +16,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -29,10 +29,11 @@ class LoanApplicationControllerTest {
     private ObjectMapper objectMapper;
 
     @MockitoBean
-    private LoanDecisionService service = Mockito.mock(LoanDecisionService.class);
+    private LoanDecisionService service;
 
     @Test
     void shouldReturnApprovedResponse() throws Exception {
+        // mock response
         LoanOfferDto offer = new LoanOfferDto(
                 BigDecimal.valueOf(20000),
                 BigDecimal.valueOf(0.12),
@@ -40,64 +41,76 @@ class LoanApplicationControllerTest {
                 BigDecimal.valueOf(942.15)
         );
 
-        LoanApplicationResponseDto mockResponse = new LoanApplicationResponseDto(30, "APPROVED", null, offer);
-        Mockito.when(service.processLoanApplication(any())).thenReturn(mockResponse);
+        LoanApplicationResponseDto mockResponse =
+                new LoanApplicationResponseDto(30, "APPROVED", null, offer);
 
-        LoanApplicationRequestDto request = LoanApplicationRequestDto.builder()
-                .name("Jane Doe")
-                .address("123 Main St")
-                .email("jane@example.com")
-                .phone("1234567890")
-                .ssn("1234567890")
-                .requestedAmount(BigDecimal.valueOf(20000))
-                .monthlyIncome(BigDecimal.valueOf(5000))
-                .employmentStatus(LoanApplicationRequestDto.Status.EMPLOYED)
-                .build();
+        Mockito.when(service.processLoanApplication(Mockito.any()))
+                .thenReturn(mockResponse);
+
+        LoanApplicationRequestDto request = new LoanApplicationRequestBuilder().build();
 
         mockMvc.perform(post("/api/loan-applications/apply")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.decision").value("APPROVED"))
-                .andExpect(jsonPath("$.offer.totalAmount").value(20000));
+                .andExpect(jsonPath("$.offer.totalLoanAmount").value(20000));
     }
 
     @Test
     void shouldReturnDeniedResponse() throws Exception {
-        LoanApplicationResponseDto mockResponse =
-                new LoanApplicationResponseDto(15, "DENIED", "No income source", null);
-        Mockito.when(service.processLoanApplication(any())).thenReturn(mockResponse);
+        // given: a mock denied response from the service
+        LoanApplicationResponseDto mockResponse = new LoanApplicationResponseDto(
+                75,                       // credit lines
+                "DENIED",                 // decision
+                "Credit lines > 50",      // reason
+                null                      // no offer DTO
+        );
 
-        LoanApplicationRequestDto request = LoanApplicationRequestDto.builder()
-                .name("John Doe")
-                .address("456 Elm St")
-                .email("john@example.com")
-                .phone("9876543210")
-                .ssn("9876543210")
-                .requestedAmount(BigDecimal.valueOf(20000))
-                .monthlyIncome(BigDecimal.valueOf(5000))
-                .employmentStatus(LoanApplicationRequestDto.Status.UNEMPLOYED)
-                .build();
+        Mockito.when(service.processLoanApplication(Mockito.any()))
+                .thenReturn(mockResponse);
 
+        // and: a valid loan request
+        LoanApplicationRequestDto request = new LoanApplicationRequestBuilder().build();
+
+        // when + then: perform the request and assert the denied decision
         mockMvc.perform(post("/api/loan-applications/apply")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.decision").value("DENIED"))
-                .andExpect(jsonPath("$.reason").value("No income source"));
+                .andExpect(jsonPath("$.reason").value("Credit lines > 50"))
+                .andExpect(jsonPath("$.creditLines").value(75));
     }
 
     @Test
-    void shouldReturnInternalServerErrorWhenInvalidInput() throws Exception {
-        LoanApplicationRequestDto invalid = LoanApplicationRequestDto.builder()
-                .name("") // missing required
-                .email("invalidemail") // no .com, invalid format
+    void shouldReturnBadRequestWhenInvalidInput() throws Exception {
+        // invalid request: missing name and invalid email
+        LoanApplicationRequestDto invalidRequest = LoanApplicationRequestDto.builder()
+                .name("") // @NotBlank violation
+                .email("invalid-email") // @Email violation
                 .requestedAmount(BigDecimal.valueOf(20000))
                 .build();
 
         mockMvc.perform(post("/api/loan-applications/apply")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalid)))
-                .andExpect(status().isBadRequest());
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors").doesNotExist()); // optional if you use default validation response
     }
+
+    @Test
+    void shouldReturnInternalServerErrorWhenServiceThrowsException() throws Exception {
+        // simulate service throwing a runtime exception
+        Mockito.when(service.processLoanApplication(Mockito.any()))
+                .thenThrow(new RuntimeException("Unexpected DB error"));
+
+        LoanApplicationRequestDto request = new LoanApplicationRequestBuilder().build();
+
+        mockMvc.perform(post("/api/loan-applications/apply")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
 }

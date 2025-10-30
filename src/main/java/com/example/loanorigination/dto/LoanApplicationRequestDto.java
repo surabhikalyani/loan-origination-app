@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
+import java.nio.file.FileStore;
 
 @Data
 @NoArgsConstructor
@@ -40,5 +41,5 @@ public class LoanApplicationRequestDto {
     @NotNull(message = "Requested loan amount is required")
     @DecimalMin(value = "1.0", message = "Requested amount must be greater than zero")
     private BigDecimal requestedAmount;
-
+    
 }

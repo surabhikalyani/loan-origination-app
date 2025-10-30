@@ -30,8 +30,8 @@ public class LoanDecisionService {
     private final LoanMapper loanMapper;
     private final Random rng;
 
-    private static final BigDecimal MIN_AMOUNT = BigDecimal.valueOf(10_000);
-    private static final BigDecimal MAX_AMOUNT = BigDecimal.valueOf(50_000);
+    private static final BigDecimal MIN_AMOUNT = BigDecimal.valueOf(10000);
+    private static final BigDecimal MAX_AMOUNT = BigDecimal.valueOf(50000);
 
     @Transactional
     public LoanApplicationResponseDto processLoanApplication(LoanApplicationRequestDto req) {
