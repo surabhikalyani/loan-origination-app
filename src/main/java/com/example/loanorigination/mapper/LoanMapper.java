@@ -15,7 +15,8 @@ public interface LoanMapper {
     // 🔹 DTO → Applicant
     @Mappings({
             @Mapping(target = "id", ignore = true),
-            @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
+            @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())"),
+            @Mapping(target = "applications", ignore = true),
     })
     Applicant toApplicant(LoanApplicationRequestDto req);
 

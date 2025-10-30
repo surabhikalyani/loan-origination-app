@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class LoanApplicationResponseDto {
-    private int creditLines;
     private String decision;
     private String reason;
     private LoanOfferDto offer;

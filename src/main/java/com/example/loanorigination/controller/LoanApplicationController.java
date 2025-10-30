@@ -26,13 +26,13 @@ public class LoanApplicationController {
     public ResponseEntity<LoanApplicationResponseDto> apply(
             @Valid @RequestBody LoanApplicationRequestDto request) {
 
-        log.info("🎯 Received loan application for name='{}', requestedAmount={}",
+        log.info("Received loan application for name='{}', requestedAmount={}",
                 request.getName(), request.getRequestedAmount());
 
         LoanApplicationResponseDto response = service.processLoanApplication(request);
 
-        log.info("✅ Loan decision for '{}': decision={}, creditLines={}",
-                request.getName(), response.getDecision(), response.getCreditLines());
+        log.info("Loan decision for '{}': decision={}",
+                request.getName(), response.getDecision());
 
         return ResponseEntity.ok(response);
     }

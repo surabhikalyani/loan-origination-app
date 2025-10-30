@@ -42,7 +42,7 @@ class LoanApplicationControllerTest {
         );
 
         LoanApplicationResponseDto mockResponse =
-                new LoanApplicationResponseDto(30, "APPROVED", null, offer);
+                new LoanApplicationResponseDto("APPROVED", null, offer);
 
         Mockito.when(service.processLoanApplication(Mockito.any()))
                 .thenReturn(mockResponse);
@@ -61,7 +61,6 @@ class LoanApplicationControllerTest {
     void shouldReturnDeniedResponse() throws Exception {
         // given: a mock denied response from the service
         LoanApplicationResponseDto mockResponse = new LoanApplicationResponseDto(
-                75,                       // credit lines
                 "DENIED",                 // decision
                 "Credit lines > 50",      // reason
                 null                      // no offer DTO
@@ -79,8 +78,7 @@ class LoanApplicationControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.decision").value("DENIED"))
-                .andExpect(jsonPath("$.reason").value("Credit lines > 50"))
-                .andExpect(jsonPath("$.creditLines").value(75));
+                .andExpect(jsonPath("$.reason").value("Credit lines > 50"));
     }
 
     @Test

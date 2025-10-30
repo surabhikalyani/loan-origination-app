@@ -59,7 +59,6 @@ public class LoanDecisionService {
         LoanOfferDto offerDto = "APPROVED".equals(offer.getDecision()) ? loanMapper.toLoanOfferDto(offer) : null;
 
         return LoanApplicationResponseDto.builder()
-                .creditLines(application.getCreditLines())
                 .decision(offer.getDecision())
                 .reason(offer.getReason())
                 .offer(offerDto)
